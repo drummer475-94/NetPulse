@@ -6,7 +6,9 @@ const basePath =
   configuredBasePath === "/"
     ? ""
     : configuredBasePath.replace(/\/$/, "");
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "https://netpulse-outage-map.drummer475.chatgpt.site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
