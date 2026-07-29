@@ -75,14 +75,7 @@ active probing, and network telescope measurements. These signals are not
 provider confirmations and do not diagnose individual home connections. Learn
 more at the [official IODA site](https://ioda.inetintel.cc.gatech.edu/).
 
-## GitHub Pages deployment
 
-The workflow at `.github/workflows/pages.yml` runs on pushes to `main`, manual
-dispatches, and a 45-minute schedule. It refreshes the snapshot, creates a
-static Next.js export, uploads `out/`, and deploys it through GitHub Pages.
-
-In the GitHub repository, set **Settings → Pages → Source** to **GitHub
-Actions**. No API keys or runtime server are required.
 
 ## Data model
 
