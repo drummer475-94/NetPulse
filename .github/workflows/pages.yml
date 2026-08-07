@@ -5,7 +5,7 @@ on:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    - cron: "*/45 * * * *"
+    - cron: "0 */2 * * *"
 
 permissions:
   contents: read
@@ -14,23 +14,26 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Set repository base path
         shell: bash
@@ -48,6 +51,9 @@ jobs:
 
       - name: Refresh IODA snapshot
         run: npm run data:refresh
+
+      - name: Validate outage snapshot contract
+        run: node scripts/verify-snapshot.mjs
 
       - name: Build static site
         run: npm run build:pages

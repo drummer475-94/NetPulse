@@ -14,24 +14,24 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "NetPulse — Internet outage signals near you",
   description:
-    "Find major internet outage signals near your current location or a U.S. ZIP code.",
+    "See broad, state-level internet connectivity signals from Georgia Tech IODA.",
   openGraph: {
     type: "website",
     title: "NetPulse — Internet outage signals near you",
-    description: "Know when the internet goes quiet.",
+    description: "State-level internet health signals without false precision.",
     images: [
       {
         url: `${basePath}/og.png`,
         width: 1732,
         height: 908,
-        alt: "NetPulse outage radar with the headline Know when the internet goes quiet.",
+        alt: "NetPulse state-level internet connectivity signal map.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "NetPulse — Internet outage signals near you",
-    description: "Know when the internet goes quiet.",
+    description: "State-level internet health signals without false precision.",
     images: [`${basePath}/og.png`],
   },
 };
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f6f2e9",
+  themeColor: "#f6f7fb",
 };
 
 export default function RootLayout({
