@@ -31,8 +31,6 @@ const REQUIRED_EVENT_STRING_FIELDS = [
   "provider",
   "network",
   "detectionSource",
-  "startedAt",
-  "updatedAt",
   "status",
 ];
 
@@ -127,8 +125,14 @@ function validateSnapshot(snapshot) {
     } else if (!isUsCoordinate(event.lat, event.lon)) {
       errors.push(`${prefix} coordinates are outside the supported U.S. coverage area.`);
     }
-    if (!isValidDate(event.startedAt)) errors.push(`${prefix}.startedAt must be a valid date.`);
-    if (!isValidDate(event.updatedAt)) errors.push(`${prefix}.updatedAt must be a valid date.`);
+    // IODA's regional summary has no event timing fields. When a source does
+    // provide them, validate rather than fabricate missing timestamps.
+    if (event.startedAt !== undefined && !isValidDate(event.startedAt)) {
+      errors.push(`${prefix}.startedAt must be a valid date when provided.`);
+    }
+    if (event.updatedAt !== undefined && !isValidDate(event.updatedAt)) {
+      errors.push(`${prefix}.updatedAt must be a valid date when provided.`);
+    }
     if (isValidDate(event.startedAt) && isValidDate(event.updatedAt) && Date.parse(event.updatedAt) < Date.parse(event.startedAt)) {
       errors.push(`${prefix}.updatedAt cannot be earlier than startedAt.`);
     }

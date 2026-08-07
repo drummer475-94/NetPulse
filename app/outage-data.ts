@@ -2,6 +2,20 @@ export type OutageKind = "internet" | "power";
 export type OutageSeverity = "major" | "moderate" | "recovering";
 export type SnapshotMode = "live" | "demo" | "unavailable";
 
+export const SEVERITY_RANK: Record<OutageSeverity, number> = {
+  major: 3,
+  moderate: 2,
+  recovering: 1,
+};
+
+export const SEVERITY_LABEL: Record<OutageSeverity, string> = {
+  major: "Major",
+  moderate: "Moderate",
+  recovering: "Recovering",
+};
+
+export const STALE_AFTER_MINUTES = 15;
+
 export type Coordinates = {
   lat: number;
   lon: number;
@@ -20,8 +34,8 @@ export type OutageEvent = {
   network: string;
   detectionSource: string;
   severity: OutageSeverity;
-  startedAt: string;
-  updatedAt: string;
+  startedAt?: string;
+  updatedAt?: string;
   status: string;
   summary?: string;
   sourceUrl?: string;
@@ -238,4 +252,33 @@ export function formatSnapshotTime(value: string) {
     minute: "2-digit",
     timeZone: "UTC",
   }).format(date)} UTC`;
+}
+
+export function minutesSince(value: string, now = Date.now()) {
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.floor((now - timestamp) / 60_000));
+}
+
+export function formatAge(value: string, now = Date.now()) {
+  const minutes = minutesSince(value, now);
+  if (!Number.isFinite(minutes)) return "age unavailable";
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+export function formatDuration(startedAt: string, endedAt: string) {
+  const start = Date.parse(startedAt);
+  const end = Date.parse(endedAt);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return "duration unavailable";
+  }
+  const minutes = Math.max(1, Math.round((end - start) / 60_000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder === 0 ? `${hours} hr` : `${hours} hr ${remainder} min`;
 }
