@@ -1,0 +1,39 @@
+name: Check data sources
+
+on:
+  push:
+    paths:
+      - "scripts/**"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  data-check:
+    name: Probe IODA and validate snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Probe upstream response shapes
+        run: node scripts/probe-ioda.mjs
+
+      - name: Build live IODA snapshot
+        run: npm run data:refresh
+
+      - name: Validate outage snapshot contract
+        run: node scripts/verify-snapshot.mjs
