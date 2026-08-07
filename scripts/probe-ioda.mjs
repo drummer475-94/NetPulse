@@ -65,7 +65,11 @@ function compactResponse(result) {
 async function requestJson(url, label) {
   try {
     const response = await fetch(url, {
-      headers: { accept: "application/json", "user-agent": "NetPulse IODA probe" },
+      headers: {
+        accept: "application/json",
+        origin: "https://drummer475-94.github.io",
+        "user-agent": "NetPulse IODA probe",
+      },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const contentType = response.headers.get("content-type") ?? "";
@@ -127,6 +131,15 @@ function sectionFor(result) {
   return lines.join("\n");
 }
 
+function compactSummaryRow(row) {
+  if (!row || typeof row !== "object") return row;
+  return {
+    entity: row.entity ?? null,
+    event_cnt: row.event_cnt ?? null,
+    scores: row.scores ?? null,
+  };
+}
+
 async function writeSummary(markdown) {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
   if (summaryPath) {
@@ -154,6 +167,7 @@ async function main() {
   });
   const summaryResult = await requestJson(summaryUrl, "IODA U.S. regional outage summary");
   results.push(summaryResult);
+  const summaryRows = asArray(summaryResult.body);
 
   const regions = asArray(entitiesResult.body);
   const probeEntity = regions.find((entity) => entity?.code ?? entity?.id);
@@ -194,7 +208,17 @@ async function main() {
     markdownCode(entityList),
     "",
   ].join("\n");
-  await writeSummary(`${header}${results.map(sectionFor).join("\n")}${entitySection}`);
+  const summarySamples = [
+    "## Regional summary row samples",
+    "",
+    `Returned summary rows: **${summaryRows.length}**`,
+    "",
+    markdownCode(summaryRows.slice(0, 10).map(compactSummaryRow)),
+    "",
+  ].join("\n");
+  await writeSummary(
+    `${header}${results.map(sectionFor).join("\n")}${summarySamples}${entitySection}`,
+  );
 
   const requiredFailures = [entitiesResult, summaryResult].filter(
     (result) => !result.ok || result.body === undefined,
