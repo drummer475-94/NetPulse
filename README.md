@@ -5,6 +5,12 @@ signals near a device location or U.S. ZIP code. It uses Georgia Tech's
 [Internet Outage Detection and Analysis (IODA)](https://ioda.inetintel.cc.gatech.edu/)
 data and is designed to deploy on GitHub Pages.
 
+It also includes a browser-local **NOC Diagnostics** tab for IPv4 CIDR
+calculation and deterministic training scenarios for latency, DNS, and TCP
+ports. These scenarios use documentation address space and do not send ICMP,
+DNS, TCP, or socket traffic. They are illustrative exercises, not measurements
+of the selected host or real network services.
+
 ## Run locally
 
 Requirements: Node.js 22.13 or newer and npm.
