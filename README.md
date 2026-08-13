@@ -1,5 +1,9 @@
 # NetPulse
 
+[![Verify application](https://github.com/drummer475-94/NetPulse/actions/workflows/verify.yml/badge.svg)](https://github.com/drummer475-94/NetPulse/actions/workflows/verify.yml)
+[![Diagnostics coverage](https://img.shields.io/badge/diagnostics%20coverage-100%25%20lines%20%7C%20100%25%20functions-brightgreen)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 NetPulse is a mobile-first static web app for finding broad internet-connectivity
 signals near a device location or U.S. ZIP code. It uses Georgia Tech's
 [Internet Outage Detection and Analysis (IODA)](https://ioda.inetintel.cc.gatech.edu/)
@@ -10,6 +14,15 @@ calculation and deterministic training scenarios for latency, DNS, and TCP
 ports. These scenarios use documentation address space and do not send ICMP,
 DNS, TCP, or socket traffic. They are illustrative exercises, not measurements
 of the selected host or real network services.
+
+## 60-second review
+
+1. Open the [live app](https://drummer475-94.github.io/NetPulse/) and review the state-level IODA signal map.
+2. Select **NOC diagnostics** and calculate the example `192.0.2.10/29` range.
+3. Run the latency, DNS, and TCP scenarios and verify that each result is explicitly labeled as simulated.
+4. Review [`app/diagnostics.ts`](app/diagnostics.ts) for the typed, deterministic engine and [`tests/diagnostics.test.mjs`](tests/diagnostics.test.mjs) for its validation and coverage evidence.
+
+The current suite passes 14 tests. The diagnostics engine reports 100% line and function coverage; CI fails below 90% for either metric.
 
 ## Run locally
 
@@ -35,6 +48,9 @@ npm run build
 # Product checks (includes the Vinext build)
 npm test
 
+# Tests plus the diagnostics coverage gate
+npm run test:coverage
+
 # GitHub Pages static export to out/
 npm run build:pages
 ```
@@ -51,7 +67,19 @@ site such as `owner.github.io`. The included Pages workflow calculates this
 automatically and supplies `NEXT_PUBLIC_SITE_URL` as the site origin for
 absolute social-preview metadata.
 
-## IODA data flow
+## Architecture and data flow
+
+```mermaid
+flowchart LR
+    Pages["GitHub Pages build"] --> Refresh["IODA snapshot refresh"]
+    Refresh --> Snapshot["Validated outages.json"]
+    Snapshot --> UI["Regional signal map"]
+    Browser["Visitor browser"] --> Live["Direct IODA refresh"]
+    Live --> UI
+    Browser --> Diagnostics["Local diagnostics engine"]
+    Diagnostics --> CIDR["IPv4 CIDR result"]
+    Diagnostics --> Simulations["Labeled DNS, latency, and TCP scenarios"]
+```
 
 NetPulse has two complementary data paths:
 
@@ -118,3 +146,7 @@ The `OutageEvent` contract in `app/outage-data.ts` accepts
 `kind: "internet" | "power"`. The interface currently activates internet
 signals only; the Power control is deliberately disabled and labeled as coming
 soon.
+
+## License
+
+Released under the [MIT License](LICENSE).
