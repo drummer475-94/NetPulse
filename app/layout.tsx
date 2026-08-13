@@ -12,26 +12,26 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "NetPulse — Internet outage signals near you",
+  title: "NetPulse - regional outage signals and NOC diagnostics",
   description:
-    "See broad, state-level internet connectivity signals from Georgia Tech IODA.",
+    "See broad, state-level IODA connectivity signals and run offline NOC training diagnostics.",
   openGraph: {
     type: "website",
-    title: "NetPulse — Internet outage signals near you",
-    description: "State-level internet health signals without false precision.",
+    title: "NetPulse - regional signals and NOC diagnostics",
+    description: "State-level internet health signals and offline diagnostic training tools.",
     images: [
       {
         url: `${basePath}/og.png`,
         width: 1732,
         height: 908,
-        alt: "NetPulse state-level internet connectivity signal map.",
+        alt: "NetPulse regional connectivity signal map and diagnostics workbench.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NetPulse — Internet outage signals near you",
-    description: "State-level internet health signals without false precision.",
+    title: "NetPulse - regional signals and NOC diagnostics",
+    description: "State-level internet health signals and offline diagnostic training tools.",
     images: [`${basePath}/og.png`],
   },
 };

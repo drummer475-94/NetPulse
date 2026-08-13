@@ -39,6 +39,10 @@ test("server-renders the state-resolution NetPulse shell", async () => {
   assert.match(html, /Each tile represents a state or DC/);
   assert.match(html, /Signals in the last 24 hours/);
   assert.match(html, /What NetPulse is showing/);
+  assert.match(html, /NOC diagnostics/);
+  assert.match(html, /IPv4 CIDR calculator/);
+  assert.match(html, /Simulation only\./);
+  assert.match(html, /do not send ICMP, DNS, TCP, or socket traffic/i);
   assert.match(html, /browser contacts Georgia Tech directly/i);
   assert.match(html, /role="status"/);
   assert.match(html, /aria-label="State outage signal map"/);

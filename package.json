@@ -12,6 +12,7 @@
     "data:refresh": "node scripts/fetch-outages.mjs",
     "start": "vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "test:coverage": "npm run build && node --test --experimental-strip-types --experimental-test-coverage --test-coverage-include=app/diagnostics.ts --test-coverage-lines=90 --test-coverage-functions=90 tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

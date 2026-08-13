@@ -13,6 +13,17 @@ import {
 } from "./outage-data";
 import { fetchLiveSnapshot } from "./live-source";
 import { nearestState, stateForZip, US_STATES, type UsState } from "./us-geo";
+import {
+  calculateIpv4Cidr,
+  PORT_PROFILES,
+  simulateDns,
+  simulateLatency,
+  simulatePorts,
+  type CidrSummary,
+  type DnsSimulation,
+  type LatencySimulation,
+  type PortSimulation,
+} from "./diagnostics";
 
 type UserPlace = {
   state?: UsState;
@@ -119,7 +130,116 @@ function StateGrid({
   );
 }
 
+function DiagnosticsWorkbench() {
+  const [cidr, setCidr] = useState("192.0.2.10/29");
+  const [cidrResult, setCidrResult] = useState<CidrSummary>(() => calculateIpv4Cidr("192.0.2.10/29"));
+  const [cidrError, setCidrError] = useState("");
+  const [target, setTarget] = useState("edge.example");
+  const [latencyResult, setLatencyResult] = useState<LatencySimulation>(() => simulateLatency("edge.example"));
+  const [latencyError, setLatencyError] = useState("");
+  const [domain, setDomain] = useState("example.com");
+  const [recordType, setRecordType] = useState("A");
+  const [dnsResult, setDnsResult] = useState<DnsSimulation>(() => simulateDns("example.com", "A"));
+  const [dnsError, setDnsError] = useState("");
+  const [portProfile, setPortProfile] = useState<keyof typeof PORT_PROFILES>("common");
+  const [portResult, setPortResult] = useState<PortSimulation[]>(() => simulatePorts("edge.example", [...PORT_PROFILES.common]));
+  const [portError, setPortError] = useState("");
+
+  const runCidr = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setCidrResult(calculateIpv4Cidr(cidr));
+      setCidrError("");
+    } catch (error) {
+      setCidrError(error instanceof Error ? error.message : "Unable to calculate this CIDR.");
+    }
+  };
+
+  const runLatency = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setLatencyResult(simulateLatency(target));
+      setLatencyError("");
+    } catch (error) {
+      setLatencyError(error instanceof Error ? error.message : "Unable to create this simulation.");
+    }
+  };
+
+  const runDns = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setDnsResult(simulateDns(domain, recordType));
+      setDnsError("");
+    } catch (error) {
+      setDnsError(error instanceof Error ? error.message : "Unable to create this simulation.");
+    }
+  };
+
+  const runPorts = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setPortResult(simulatePorts(target, [...PORT_PROFILES[portProfile]]));
+      setPortError("");
+    } catch (error) {
+      setPortError(error instanceof Error ? error.message : "Unable to create this simulation.");
+    }
+  };
+
+  return (
+    <section className="diagnostics" aria-labelledby="diagnostics-heading">
+      <div className="diagnostics-intro">
+        <div>
+          <p className="eyebrow">Training workbench</p>
+          <h1 id="diagnostics-heading">NOC diagnostics</h1>
+          <p>Calculate IPv4 ranges and rehearse a troubleshooting conversation with stable example results.</p>
+        </div>
+        <p className="simulation-disclosure" id="simulation-disclosure"><strong>Simulation only.</strong> These tools run entirely in this page. They do not send ICMP, DNS, TCP, or socket traffic, and their results are not observations of the target.</p>
+      </div>
+
+      <div className="diagnostic-grid">
+        <section className="card diagnostic-card" aria-labelledby="cidr-heading">
+          <div className="card-head"><div><p className="eyebrow">Local calculation</p><h2 id="cidr-heading">IPv4 CIDR calculator</h2></div><span className="pill">No network request</span></div>
+          <form className="tool-form" onSubmit={runCidr}>
+            <label htmlFor="cidr">Address and prefix</label>
+            <div className="tool-row"><input id="cidr" value={cidr} onChange={(event) => setCidr(event.target.value)} inputMode="text" placeholder="192.0.2.10/24" aria-describedby="cidr-help" /><button className="primary-button" type="submit">Calculate</button></div>
+            <p id="cidr-help" className="field-help">Example documentation range: 192.0.2.10/29.</p>
+          </form>
+          {cidrError ? <p className="tool-error" role="alert">{cidrError}</p> : <dl className="diagnostic-results" aria-live="polite"><div><dt>Network</dt><dd>{cidrResult.network}/{cidrResult.prefix}</dd></div><div><dt>Broadcast</dt><dd>{cidrResult.broadcast}</dd></div><div><dt>Netmask</dt><dd>{cidrResult.netmask}</dd></div><div><dt>Usable hosts</dt><dd>{cidrResult.usableHosts.toLocaleString()}</dd></div><div><dt>Host range</dt><dd>{cidrResult.firstHost} – {cidrResult.lastHost}</dd></div></dl>}
+        </section>
+
+        <section className="card diagnostic-card" aria-labelledby="latency-heading">
+          <div className="card-head"><div><p className="eyebrow">Repeatable scenario</p><h2 id="latency-heading">Latency trace</h2></div><span className="pill">Simulated</span></div>
+          <form className="tool-form" onSubmit={runLatency}>
+            <label htmlFor="latency-target">Host or IPv4 address</label>
+            <div className="tool-row"><input id="latency-target" value={target} onChange={(event) => setTarget(event.target.value)} placeholder="edge.example" aria-describedby="simulation-disclosure" /><button className="primary-button" type="submit">Run scenario</button></div>
+          </form>
+          {latencyError ? <p className="tool-error" role="alert">{latencyError}</p> : <div className="console-output" aria-live="polite"><p>Simulated resolution: {latencyResult.resolvedAddress}</p><p>{latencyResult.samplesMs.map((sample, index) => `seq=${index + 1} time=${sample} ms`).join(" · ")}</p><p>Average: {latencyResult.averageMs} ms · Simulated loss: {latencyResult.packetLossPercent}%</p></div>}
+        </section>
+
+        <section className="card diagnostic-card" aria-labelledby="dns-heading">
+          <div className="card-head"><div><p className="eyebrow">Documentation data</p><h2 id="dns-heading">DNS response</h2></div><span className="pill">Simulated</span></div>
+          <form className="tool-form" onSubmit={runDns}>
+            <label htmlFor="dns-domain">Domain</label>
+            <div className="tool-row"><input id="dns-domain" value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="example.com" aria-describedby="simulation-disclosure" /><select aria-label="DNS record type" value={recordType} onChange={(event) => setRecordType(event.target.value)}><option>A</option><option>AAAA</option><option>MX</option><option>TXT</option></select><button className="primary-button" type="submit">Resolve</button></div>
+          </form>
+          {dnsError ? <p className="tool-error" role="alert">{dnsError}</p> : <div className="console-output" aria-live="polite"><p>{dnsResult.status} from simulated resolver {dnsResult.resolver} in {dnsResult.responseTimeMs} ms</p><p>{dnsResult.records.length ? dnsResult.records.join(" · ") : "No simulated records returned."}</p></div>}
+        </section>
+
+        <section className="card diagnostic-card" aria-labelledby="ports-heading">
+          <div className="card-head"><div><p className="eyebrow">Training scenario</p><h2 id="ports-heading">TCP port matrix</h2></div><span className="pill">Simulated</span></div>
+          <form className="tool-form" onSubmit={runPorts}>
+            <label htmlFor="port-profile">Port profile</label>
+            <div className="tool-row"><select id="port-profile" value={portProfile} onChange={(event) => setPortProfile(event.target.value as keyof typeof PORT_PROFILES)} aria-describedby="simulation-disclosure"><option value="common">Common operations ports</option><option value="web">Web services</option></select><button className="primary-button" type="submit">Run scenario</button></div>
+          </form>
+          {portError ? <p className="tool-error" role="alert">{portError}</p> : <div className="port-table-wrap"><table><caption className="sr-only">Simulated TCP port results</caption><thead><tr><th scope="col">Port</th><th scope="col">Service</th><th scope="col">Scenario</th><th scope="col">Time</th></tr></thead><tbody>{portResult.map((result) => <tr key={result.port}><td>{result.port}</td><td>{result.service}</td><td><span className={`port-status port-${result.status}`}>Simulated {result.status}</span></td><td>{result.responseTimeMs} ms</td></tr>)}</tbody></table></div>}
+        </section>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
+  const [activeView, setActiveView] = useState<"signals" | "diagnostics">("signals");
   const [snapshot, setSnapshot] = useState<OutageSnapshot>(FALLBACK_SNAPSHOT);
   const [liveStatus, setLiveStatus] = useState<"live" | "snapshot">("snapshot");
   const [place, setPlace] = useState<UserPlace>(DEFAULT_PLACE);
@@ -260,6 +380,12 @@ export default function Home() {
         <a className="ghost-button" href="#method">How it works</a>
       </header>
 
+      <div className="view-tabs" role="tablist" aria-label="NetPulse workspace">
+        <button id="signals-tab" role="tab" type="button" aria-selected={activeView === "signals"} aria-controls="signals-panel" className={activeView === "signals" ? "is-active" : ""} onClick={() => setActiveView("signals")}>Regional signals</button>
+        <button id="diagnostics-tab" role="tab" type="button" aria-selected={activeView === "diagnostics"} aria-controls="diagnostics-panel" className={activeView === "diagnostics" ? "is-active" : ""} onClick={() => setActiveView("diagnostics")}>NOC diagnostics</button>
+      </div>
+
+      <section id="signals-panel" role="tabpanel" aria-labelledby="signals-tab" hidden={activeView !== "signals"}>
       <div id="main-content" className="hero">
         <div>
           <p className="eyebrow">Internet health, at state resolution</p>
@@ -323,6 +449,10 @@ export default function Home() {
       <section id="method" className="source">
         <div><p className="eyebrow">Methodology</p><h2>What NetPulse is showing</h2></div>
         <div className="source-facts"><p>NetPulse starts with a static IODA snapshot so the page can load on GitHub Pages, then refreshes directly from Georgia Tech while this tab is visible.</p><p>Live refresh means your browser contacts Georgia Tech directly, so IODA can see your visitor IP address. The static snapshot path does not make that direct connection. Device coordinates stay local in your browser.</p><p className="disclosure">When live refresh fails, NetPulse keeps the last snapshot and shows its real age instead of fabricating a current result.</p><a className="text-link" href={snapshot.metadata.sourceUrl} target="_blank" rel="noreferrer">About Georgia Tech IODA</a></div>
+      </section>
+      </section>
+      <section id="diagnostics-panel" role="tabpanel" aria-labelledby="diagnostics-tab" hidden={activeView !== "diagnostics"}>
+        <DiagnosticsWorkbench />
       </section>
       <footer>NetPulse is an independent interface for regional internet-health signals. <a className="text-link" href="#main-content">Back to top</a></footer>
     </main>
