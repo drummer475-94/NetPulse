@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "build:pages": "next build",
-    "data:refresh": "node scripts/fetch-outages.mjs",
+    "data:refresh": "node scripts/fetch-nc-status.mjs",
     "start": "vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
     "test:coverage": "npm run build && node --test --experimental-strip-types --experimental-test-coverage --test-coverage-include=app/diagnostics.ts --test-coverage-lines=90 --test-coverage-functions=90 tests/*.test.mjs",
