@@ -8,8 +8,9 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
-    "build:pages": "npm run data:refresh && npm run data:verify && next build",
+    "build:pages": "npm run data:refresh && npm run geography:refresh && npm run data:verify && next build",
     "data:refresh": "node --experimental-strip-types scripts/fetch-nc-status.mjs",
+    "geography:refresh": "node scripts/fetch-nc-geography.mjs",
     "data:verify": "node --experimental-strip-types scripts/verify-nc-status.mjs",
     "start": "vinext start",
     "test": "npm run build && node --experimental-strip-types --test tests/*.test.mjs",
