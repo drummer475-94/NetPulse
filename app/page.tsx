@@ -5,9 +5,11 @@ import { isSnapshot, type NcStatusSnapshotV1, type WeatherAlert } from "../lib/n
 const num = new Intl.NumberFormat("en-US");
 const age = (value?: string) => value ? `${Math.max(0, Math.round((Date.now()-Date.parse(value))/60000))} min ago` : "not available";
 const rank = (a: WeatherAlert) => (a.severity === "Extreme" ? 0 : a.severity === "Severe" ? 1 : 2) + (a.urgency === "Immediate" ? -1 : 0);
+const siteBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const snapshotPath = `${siteBasePath}/data/nc-status.json`;
 export default function Home() {
  const [data,setData]=useState<NcStatusSnapshotV1|null>(null),[fips,setFips]=useState("37183"),[zip,setZip]=useState(""),[message,setMessage]=useState("Loading official status…"),[layer,setLayer]=useState<"power"|"weather">("power"),[remember,setRemember]=useState(false);
- useEffect(()=>{let live=true;const saved=localStorage.getItem("netpulse-nc-county");if(saved)setTimeout(()=>{if(live){setFips(saved);setRemember(true)}},0);Promise.allSettled([fetch("/data/nc-status.json").then(r=>r.json()),fetch("/api/nc/status",{cache:"no-store"}).then(r=>r.json())]).then(results=>{for(const r of results){if(r.status==="fulfilled"&&isSnapshot(r.value)&&live)setData(r.value)}if(live)setMessage("Source status loaded. Data age is shown with each source.")});return()=>{live=false}},[]);
+ useEffect(()=>{let live=true;const saved=localStorage.getItem("netpulse-nc-county");if(saved)setTimeout(()=>{if(live){setFips(saved);setRemember(true)}},0);fetch(snapshotPath).then(r=>{if(!r.ok)throw new Error(`snapshot HTTP ${r.status}`);return r.json()}).then(value=>{if(live&&isSnapshot(value))setData(value);if(live)setMessage("Source status loaded. Data age is shown with each source.")}).catch(()=>{if(live)setMessage("Source status is unavailable. Review the source links below.")});return()=>{live=false}},[]);
  const county=counties.find(c=>c.fips===fips)??counties[0], select=(x:string)=>{setFips(x);if(remember)localStorage.setItem("netpulse-nc-county",x)};
  const power=data?.power.find(x=>x.countyFips===fips), alerts=useMemo(()=> (data?.alerts??[]).filter(x=>!x.countyFips.length||x.countyFips.includes(fips)).sort((a,b)=>rank(a)-rank(b)),[data,fips]);
  const unavailable=!data||data.sources.power.freshness!=="fresh"||data.sources.weather.freshness!=="fresh";

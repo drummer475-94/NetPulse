@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "db", "worker", "examples", "build"]
+  "exclude": [
+    "node_modules",
+    "db",
+    "worker",
+    "examples",
+    "build",
+    "app/live-source.ts",
+    "app/ioda-source.d.ts"
+  ]
 }

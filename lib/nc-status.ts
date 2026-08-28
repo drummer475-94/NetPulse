@@ -27,7 +27,8 @@ export function parseNws(input: unknown): WeatherAlert[] {
     const id = text(properties.id) || text((feature as { id?: unknown }).id);
     const event = text(properties.event), expiresAt = iso(properties.expires);
     if (!id || !event || !expiresAt) throw new Error("weather-schema");
-    const codes = Array.isArray(properties.geocode?.SAME) ? properties.geocode.SAME.filter((x): x is string => /^37\d{3}$/.test(String(x))).map(String) : [];
+    const sameCodes = (properties.geocode as { SAME?: unknown } | undefined)?.SAME;
+    const codes = Array.isArray(sameCodes) ? sameCodes.filter((x): x is string => /^37\d{3}$/.test(String(x))).map(String) : [];
     const severity = ["Extreme", "Severe", "Moderate", "Minor"].includes(text(properties.severity)) ? text(properties.severity) as WeatherAlert["severity"] : "Unknown";
     return { id, event, headline: text(properties.headline) || event, severity, urgency: text(properties.urgency) || "Unknown", certainty: text(properties.certainty) || "Unknown", status: text(properties.status) || "Actual", sentAt: iso(properties.sent) || expiresAt, effectiveAt: iso(properties.effective), onsetAt: iso(properties.onset), expiresAt, endsAt: iso(properties.ends), areaDescription: text(properties.areaDesc) || "North Carolina", countyFips: codes, description: text(properties.description) || undefined, instruction: text(properties.instruction) || undefined, geometry: ((feature as { geometry?: unknown }).geometry ?? null), senderName: text(properties.senderName) || "National Weather Service", sourceUrl: text(properties['@id']) || `https://api.weather.gov/alerts/${id}` };
   });
