@@ -8,10 +8,11 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
-    "build:pages": "next build",
-    "data:refresh": "node scripts/fetch-nc-status.mjs",
+    "build:pages": "npm run data:refresh && npm run data:verify && next build",
+    "data:refresh": "node --experimental-strip-types scripts/fetch-nc-status.mjs",
+    "data:verify": "node --experimental-strip-types scripts/verify-nc-status.mjs",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/*.test.mjs",
     "test:coverage": "npm run build && node --test --experimental-strip-types --experimental-test-coverage --test-coverage-include=app/diagnostics.ts --test-coverage-lines=90 --test-coverage-functions=90 tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"

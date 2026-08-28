@@ -1,3 +1,5 @@
+import { ncCountyByName } from "./nc-counties.ts";
+
 export type Freshness = "fresh" | "stale" | "unavailable";
 
 export type SourceStatus = {
@@ -28,7 +30,7 @@ export function parseNws(input: unknown): WeatherAlert[] {
     const event = text(properties.event), expiresAt = iso(properties.expires);
     if (!id || !event || !expiresAt) throw new Error("weather-schema");
     const sameCodes = (properties.geocode as { SAME?: unknown } | undefined)?.SAME;
-    const codes = Array.isArray(sameCodes) ? sameCodes.filter((x): x is string => /^37\d{3}$/.test(String(x))).map(String) : [];
+    const codes = Array.isArray(sameCodes) ? sameCodes.map(String).map((code) => /^037\d{3}$/.test(code) ? code.slice(1) : code).filter((code) => /^37\d{3}$/.test(code)) : [];
     const severity = ["Extreme", "Severe", "Moderate", "Minor"].includes(text(properties.severity)) ? text(properties.severity) as WeatherAlert["severity"] : "Unknown";
     return { id, event, headline: text(properties.headline) || event, severity, urgency: text(properties.urgency) || "Unknown", certainty: text(properties.certainty) || "Unknown", status: text(properties.status) || "Actual", sentAt: iso(properties.sent) || expiresAt, effectiveAt: iso(properties.effective), onsetAt: iso(properties.onset), expiresAt, endsAt: iso(properties.ends), areaDescription: text(properties.areaDesc) || "North Carolina", countyFips: codes, description: text(properties.description) || undefined, instruction: text(properties.instruction) || undefined, geometry: ((feature as { geometry?: unknown }).geometry ?? null), senderName: text(properties.senderName) || "National Weather Service", sourceUrl: text(properties['@id']) || `https://api.weather.gov/alerts/${id}` };
   });
@@ -40,9 +42,12 @@ export function parseNcem(input: unknown): CountyPowerStatus[] {
   return features.map((feature) => {
     const a = (feature as { attributes?: Record<string, unknown> }).attributes;
     if (!a) throw new Error("power-schema");
-    const countyFips = String(a.fips ?? a.FIPS ?? a.county_fips ?? "").padStart(5, "0");
-    const countyName = text(a.name ?? a.NAME ?? a.county ?? a.COUNTY);
-    const customersOut = num(a.customers_out ?? a.CUSTOMERS_OUT ?? a.outages);
+    const suppliedCountyName = text(a.CountyName ?? a.name ?? a.NAME ?? a.county ?? a.COUNTY);
+    const countyIdentity = ncCountyByName.get(suppliedCountyName.toUpperCase());
+    const countyName = countyIdentity?.name ?? suppliedCountyName;
+    const suppliedFips = String(a.fips ?? a.FIPS ?? a.county_fips ?? "");
+    const countyFips = suppliedFips ? suppliedFips.padStart(5, "0") : countyIdentity?.fips ?? "";
+    const customersOut = num(a.Outages ?? a.customers_out ?? a.CUSTOMERS_OUT ?? a.outages);
     if (!/^37\d{3}$/.test(countyFips) || !countyName || customersOut === undefined) throw new Error("power-schema");
     const customersServed = num(a.total_customers ?? a.TOTAL_CUSTOMERS ?? a.customers_served);
     const percentOut = num(a.perc_out ?? a.PERC_OUT ?? a.percent_out) ?? (customersServed ? customersOut / customersServed * 100 : undefined);
