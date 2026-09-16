@@ -1,4 +1,4 @@
-import { ncCountyByName } from "./nc-counties.ts";
+import { ncCountyByName, ncCountyIdentities } from "./nc-counties.ts";
 
 export type Freshness = "fresh" | "stale" | "unavailable";
 
@@ -11,7 +11,7 @@ export type WeatherAlert = { id: string; event: string; headline: string; severi
 export type NcStatusSnapshotV1 = { schemaVersion: 1; generatedAt: string; state: "NC"; sources: { power: SourceStatus; weather: SourceStatus }; power: CountyPowerStatus[]; alerts: WeatherAlert[] };
 
 export const NWS_URL = "https://api.weather.gov/alerts/active?area=NC";
-export const NCEM_URL = "https://spartagis.ncem.org/arcgis/rest/services/Public/ReadyNC_PowerOutages/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=false&f=json";
+export const NCEM_URL = "https://fusion.ncsparta.gov/ReadyNC_PowerOutageAPI/html";
 const now = () => new Date().toISOString();
 export function unavailableSnapshot(at = now()): NcStatusSnapshotV1 {
   const unavailable = (name: string, sourceUrl: string): SourceStatus => ({ name, sourceUrl, lastAttemptAt: at, freshness: "unavailable" });
@@ -20,6 +20,61 @@ export function unavailableSnapshot(at = now()): NcStatusSnapshotV1 {
 function iso(value: unknown) { const date = new Date(String(value ?? "")); return Number.isNaN(date.valueOf()) ? undefined : date.toISOString(); }
 function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
 function num(value: unknown) { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined; }
+function normalizeCountyName(value: unknown) { return text(value).replace(/\s+COUNTY$/i, "").replace(/\s+/g, " ").toUpperCase(); }
+function decodeHtml(value: string) {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+}
+function htmlText(value: string) { return decodeHtml(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()); }
+function outageCount(value: string) {
+  const normalized = htmlText(value).replace(/,/g, "");
+  if (!/^\d+$/.test(normalized)) return undefined;
+  const parsed = Number(normalized);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+function parseNcemHtml(input: string): CountyPowerStatus[] {
+  const counts = new Map<string, number>();
+  let sawHeader = false;
+  let statewideTotal: number | undefined;
+
+  for (const rowMatch of input.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = Array.from(rowMatch[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi), (match) => htmlText(match[1]));
+    if (cells.length < 2) continue;
+
+    const label = cells[0];
+    const labelKey = normalizeCountyName(label);
+    if (labelKey === "COUNTY") {
+      sawHeader = true;
+      continue;
+    }
+    if (/^STATEWIDE OUTAGES$/i.test(label)) {
+      statewideTotal = outageCount(cells[1]);
+      if (statewideTotal === undefined) throw new Error("power-schema");
+      continue;
+    }
+
+    const county = ncCountyByName.get(labelKey);
+    if (!county) continue;
+    const customersOut = outageCount(cells[1]);
+    if (customersOut === undefined || counts.has(county.fips)) throw new Error("power-schema");
+    counts.set(county.fips, customersOut);
+  }
+
+  if (!sawHeader || statewideTotal === undefined) throw new Error("power-schema");
+  const total = Array.from(counts.values()).reduce((sum, value) => sum + value, 0);
+  if (total !== statewideTotal) throw new Error("power-schema");
+
+  return ncCountyIdentities.map((county) => ({
+    countyFips: county.fips,
+    countyName: county.name,
+    customersOut: counts.get(county.fips) ?? 0,
+  }));
+}
 export function parseNws(input: unknown): WeatherAlert[] {
   const features = (input as { features?: unknown })?.features;
   if (!Array.isArray(features)) throw new Error("weather-schema");
@@ -37,6 +92,14 @@ export function parseNws(input: unknown): WeatherAlert[] {
   return alerts.filter((a) => a.status !== "Cancel" && Date.parse(a.expiresAt) > Date.now());
 }
 export function parseNcem(input: unknown): CountyPowerStatus[] {
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (trimmed.startsWith("{")) {
+      try { return parseNcem(JSON.parse(trimmed)); } catch { throw new Error("power-schema"); }
+    }
+    return parseNcemHtml(input);
+  }
+
   const features = (input as { features?: unknown })?.features;
   if (!Array.isArray(features)) throw new Error("power-schema");
   return features.map((feature) => {

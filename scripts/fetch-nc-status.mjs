@@ -15,10 +15,19 @@ async function fetchJson(fetchImpl, url, headers = {}) {
   return response.json();
 }
 
+async function fetchText(fetchImpl, url, headers = {}) {
+  const response = await fetchImpl(url, {
+    headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+  return response.text();
+}
+
 export async function buildSnapshot({ fetchImpl = fetch, at = new Date() } = {}) {
   const generatedAt = at.toISOString();
   const [powerPayload, weatherPayload] = await Promise.all([
-    fetchJson(fetchImpl, NCEM_URL),
+    fetchText(fetchImpl, NCEM_URL),
     fetchJson(fetchImpl, NWS_URL, {
       Accept: "application/geo+json",
       "User-Agent": "NetPulse (https://github.com/drummer475-94/NetPulse)",
